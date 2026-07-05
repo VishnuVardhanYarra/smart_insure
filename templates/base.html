@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}InsureSmart | AI-Powered Insurance Recommendation Engine{% endblock %}</title>
+    
+    <!-- Meta tags for SEO -->
+    <meta name="description" content="InsureSmart uses state-of-the-art Google Gemini AI to analyze your health, lifestyle, and financials to calculate risks and match you with premium insurance policies.">
+    <meta name="keywords" content="AI insurance, Gemini, Flask, insurance recommendations, financial planning, risk assessment, premium calculator">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Premium Glowing Background Accents -->
+    <div class="bg-glow bg-glow-1"></div>
+    <div class="bg-glow bg-glow-2"></div>
+    <div class="bg-glow bg-glow-3"></div>
+
+    <!-- Header Navigation -->
+    <header class="navbar">
+        <div class="nav-container">
+            <a href="{{ url_for('index') }}" class="nav-logo" id="navLogo">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                </div>
+                <span>Insure<span>Smart</span></span>
+            </a>
+            
+            <!-- Mobile Menu Toggle Button -->
+            <button class="menu-toggle" id="menuToggle" aria-label="Toggle Navigation Menu">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            
+            <nav class="nav-menu" id="navMenu">
+                <a href="{{ url_for('index') }}" class="nav-link {% if request.path == '/' %}active{% endif %}"><i class="fa-solid fa-house"></i> Home</a>
+                <a href="{{ url_for('assess') }}" class="nav-link {% if request.path == '/assess' %}active{% endif %}"><i class="fa-solid fa-square-poll-horizontal"></i> Analyze Risk</a>
+                <a href="{{ url_for('history') }}" class="nav-link {% if request.path == '/history' %}active{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i> History Hub</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="main-content">
+        <!-- Toast Container for Flash Notifications -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="toast-container" id="toastContainer">
+                    {% for category, message in messages %}
+                        <div class="toast toast-{{ category }}" role="alert">
+                            <div class="toast-icon">
+                                {% if category == 'success' %}
+                                    <i class="fa-solid fa-circle-check"></i>
+                                {% elif category == 'danger' %}
+                                    <i class="fa-solid fa-circle-exclamation"></i>
+                                {% else %}
+                                    <i class="fa-solid fa-circle-info"></i>
+                                {% endif %}
+                            </div>
+                            <div class="toast-message">{{ message }}</div>
+                            <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}
+        <div class="fallback-container">
+            <h1>{{ content_placeholder | default("Welcome to InsureSmart") }}</h1>
+        </div>
+        {% endblock %}
+    </main>
+
+    <!-- Premium Footer -->
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-logo">
+                <i class="fa-solid fa-shield-halved"></i> InsureSmart
+            </div>
+            <div class="footer-text">
+                &copy; 2026 InsureSmart AI Recommendation Engine. Powered by Google Gemini AI & Flask.
+            </div>
+            <div class="footer-links">
+                <a href="#"><i class="fa-solid fa-file-shield"></i> Privacy Policy</a>
+                <a href="#"><i class="fa-solid fa-scale-balanced"></i> Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Main JS file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

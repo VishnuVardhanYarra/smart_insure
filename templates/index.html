@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}InsureSmart | Generative AI Insurance Recommendation Platform{% endblock %}
+
+{% block content %}
+<section class="hero-section">
+    <div class="hero-content">
+        <h1>Smart Insurance Planning Powered by <span>Gemini AI</span></h1>
+        <p class="hero-description">
+            InsureSmart performs comprehensive risk assessment, generates premium estimations, and builds custom policy matching profiles using state-of-the-art Generative AI. Simplify financial planning in minutes.
+        </p>
+        <div class="cta-group">
+            <a href="{{ url_for('assess') }}" class="btn btn-primary">
+                <i class="fa-solid fa-bolt"></i> Start Free Risk Analysis
+            </a>
+            <a href="{{ url_for('history') }}" class="btn btn-secondary">
+                <i class="fa-solid fa-clock-rotate-left"></i> View History Hub
+            </a>
+        </div>
+    </div>
+    
+    <!-- Hero Mockup Design -->
+    <div class="hero-visual">
+        <div class="dashboard-mockup">
+            <div class="mockup-header">
+                <span class="mockup-title"><i class="fa-solid fa-shield-halved"></i> Report Preview</span>
+                <div class="mockup-dots">
+                    <span class="mockup-dot"></span>
+                    <span class="mockup-dot"></span>
+                    <span class="mockup-dot"></span>
+                </div>
+            </div>
+            
+            <div class="mockup-gauge">
+                <div class="gauge-circle">
+                    <div class="gauge-val">
+                        65
+                        <span>Risk Index</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mockup-plans">
+                <div class="mockup-plan-item">
+                    <span class="mockup-plan-name">AarogyaShield Comprehensive</span>
+                    <span class="mockup-plan-price">₹1,450/mo</span>
+                </div>
+                <div class="mockup-plan-item">
+                    <span class="mockup-plan-name">SurakshaSetu Term Plan</span>
+                    <span class="mockup-plan-price">₹820/mo</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Features Grid -->
+<section class="features-grid">
+    <div class="feature-card">
+        <div class="feature-icon">
+            <i class="fa-solid fa-brain"></i>
+        </div>
+        <h3>Gemini AI Analysis</h3>
+        <p>Harness Google Gemini AI to analyze complex health conditions and lifestyle variables, translating profile data into structured policy recommendations.</p>
+    </div>
+    
+    <div class="feature-card">
+        <div class="feature-icon">
+            <i class="fa-solid fa-chart-line"></i>
+        </div>
+        <h3>Dynamic Risk Engine</h3>
+        <p>Our mathematical risk estimation module translates demographics, smoking status, and family history into a 1-100 score for actuaries.</p>
+    </div>
+    
+    <div class="feature-card">
+        <div class="feature-icon">
+            <i class="fa-solid fa-wallet"></i>
+        </div>
+        <h3>Premium Estimation</h3>
+        <p>Get instant estimations for monthly premium costs across life, health, and critical illness plans, tailored to your budget constraints.</p>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}InsureSmart | Start Insurance Risk Assessment{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="glass-panel">
+        <div class="form-header">
+            <h2>Insurance Risk Assessment</h2>
+            <p>Complete the profile steps below. Our Gemini AI engine will analyze your inputs and generate matching plan recommendations.</p>
+        </div>
+
+        <!-- Progress Steps Indicators -->
+        <div class="steps-indicator">
+            <div class="step-progress-bar" id="stepProgressBar"></div>
+            <div class="step-node active">
+                <div class="step-circle">1</div>
+                <div class="step-label">Demographics</div>
+            </div>
+            <div class="step-node">
+                <div class="step-circle">2</div>
+                <div class="step-label">Health & Habits</div>
+            </div>
+            <div class="step-node">
+                <div class="step-circle">3</div>
+                <div class="step-label">Preferences</div>
+            </div>
+        </div>
+
+        <!-- Assessment Form -->
+        <form action="{{ url_for('assess') }}" method="POST" id="assessmentForm">
+            
+            <!-- STEP 1: Demographics & Financials -->
+            <div class="form-step-content active" id="step-0">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-user"></i>
+                        <input type="text" id="name" name="name" class="form-input" placeholder="e.g. Jane Doe" value="{{ form_data.name if form_data.name else '' }}">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="age">Age</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-calendar-days"></i>
+                            <input type="number" id="age" name="age" class="form-input" placeholder="Min 18, Max 100" min="18" max="100" value="{{ form_data.age if form_data.age else '' }}">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="gender">Gender</label>
+                        <div class="select-wrapper">
+                            <i class="fa-solid fa-venus-mars"></i>
+                            <select id="gender" name="gender" class="form-select">
+                                <option value="" disabled {% if not form_data.gender %}selected{% endif %}>Select Gender</option>
+                                <option value="Male" {% if form_data.gender == 'Male' %}selected{% endif %}>Male</option>
+                                <option value="Female" {% if form_data.gender == 'Female' %}selected{% endif %}>Female</option>
+                                <option value="Other" {% if form_data.gender == 'Other' %}selected{% endif %}>Other</option>
+                            </select>
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="annual_income">Annual Income (INR ₹)</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-indian-rupee-sign"></i>
+                            <input type="number" id="annual_income" name="annual_income" class="form-input" placeholder="e.g. 800000 (for ₹8 Lakhs)" min="0" value="{{ form_data.annual_income if form_data.annual_income else '' }}">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="dependents">Number of Dependents</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-people-roof"></i>
+                            <input type="number" id="dependents" name="dependents" class="form-input" placeholder="e.g. 2" min="0" max="20" value="{{ form_data.dependents if form_data.dependents else '0' }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- STEP 2: Health Conditions & Lifestyle Habits -->
+            <div class="form-step-content" id="step-1">
+                <div class="form-group">
+                    <label for="health_conditions">Health Conditions & Medical History</label>
+                    <textarea id="health_conditions" name="health_conditions" class="form-input" placeholder="Describe any active health conditions, chronic diseases, family history, or medications. (e.g. Type-2 Diabetes, Hypertension, or 'None')">{{ form_data.health_conditions if form_data.health_conditions else '' }}</textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="lifestyle_habits">Lifestyle Habits</label>
+                    <textarea id="lifestyle_habits" name="lifestyle_habits" class="form-input" placeholder="Describe nicotine/smoking habits, alcohol use, daily diet, or exercise routine. (e.g. Occasional smoker, moderate alcohol use, exercise 3x/week)">{{ form_data.lifestyle_habits if form_data.lifestyle_habits else '' }}</textarea>
+                </div>
+            </div>
+
+            <!-- STEP 3: Insurance Preferences -->
+            <div class="form-step-content" id="step-2">
+                <div class="form-group">
+                    <label>Insurance Coverages Desired</label>
+                    <div class="checkbox-grid">
+                        <div class="checkbox-card">
+                            <input type="checkbox" id="pref_health" name="preferences" value="Health Insurance" checked>
+                            <div class="checkbox-info">
+                                <span>Health Insurance</span>
+                                <small>Medical bills, hospitalization</small>
+                            </div>
+                        </div>
+
+                        <div class="checkbox-card">
+                            <input type="checkbox" id="pref_life" name="preferences" value="Term Life Insurance" checked>
+                            <div class="checkbox-info">
+                                <span>Term Life</span>
+                                <small>Financial protection for family</small>
+                            </div>
+                        </div>
+
+                        <div class="checkbox-card">
+                            <input type="checkbox" id="pref_critical" name="preferences" value="Critical Illness Rider">
+                            <div class="checkbox-info">
+                                <span>Critical Illness</span>
+                                <small>Cancer, heart attack lump-sums</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="form-navigation">
+                <button type="button" class="btn btn-secondary" id="btnPrev">
+                    <i class="fa-solid fa-arrow-left"></i> Previous Step
+                </button>
+                <button type="button" class="btn btn-primary" id="btnNext">
+                    Next Step <i class="fa-solid fa-arrow-right"></i>
+                </button>
+                <button type="submit" class="btn btn-primary" id="btnSubmit" style="display: none;">
+                    <i class="fa-solid fa-bolt"></i> Generate Recommendations
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+<!-- AI Analysis Loader Screen -->
+<div class="loader-overlay" id="loaderOverlay">
+    <div class="spinner"></div>
+    <div class="loader-text">Analyzing Profile & Calculating Risks...</div>
+    <div class="loader-subtext">Our Google Gemini Actuary is evaluating factors and generating policy proposals.</div>
+</div>
+{% endblock %}
