@@ -1,5 +1,7 @@
 # InsureSmart AI Insurance Recommendation Platform
 
+**Live Demo Link:** [https://dumping-unread-cautious.ngrok-free.dev](https://dumping-unread-cautious.ngrok-free.dev)
+
 InsureSmart is a generative AI-powered insurance analysis and planning application built using **Flask**, **SQLite**, and **Google Gemini AI**. It calculates personalized risk indexes, models premium ranges, matches candidates with custom insurance coverage plans (Term Life, Health, and Critical Illness), and offers tailored financial liquidity advice.
 
 The application features a premium, responsive glassmorphism dark-theme dashboard with custom SVG gauge animations, detailed policy breakdown cards, search-enabled history log management, and robust error handles (including a smart mathematical mock actuary fallback in case of rate limits or missing API keys).
