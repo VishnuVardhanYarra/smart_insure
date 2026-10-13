@@ -45,6 +45,14 @@
                 <a href="{{ url_for('index') }}" class="nav-link {% if request.path == '/' %}active{% endif %}"><i class="fa-solid fa-house"></i> Home</a>
                 <a href="{{ url_for('assess') }}" class="nav-link {% if request.path == '/assess' %}active{% endif %}"><i class="fa-solid fa-square-poll-horizontal"></i> Analyze Risk</a>
                 <a href="{{ url_for('history') }}" class="nav-link {% if request.path == '/history' %}active{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i> History Hub</a>
+                
+                {% if session.get('user_id') %}
+                    <span class="nav-link" style="color: var(--primary-light);"><i class="fa-solid fa-user-check"></i> {{ session.get('username') }}</span>
+                    <a href="{{ url_for('logout') }}" class="nav-link"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-link {% if request.path == '/login' %}active{% endif %}"><i class="fa-solid fa-right-to-bracket"></i> Login</a>
+                    <a href="{{ url_for('register') }}" class="btn btn-primary" style="padding: 0.4rem 1rem; font-size: 0.85rem; margin-left: 0.5rem;"><i class="fa-solid fa-user-plus"></i> Register</a>
+                {% endif %}
             </nav>
         </div>
     </header>

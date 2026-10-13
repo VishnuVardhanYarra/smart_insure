@@ -1,13 +1,25 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
+class User(db.Model):
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    recommendations = db.relationship('UserRecommendation', backref='user', lazy=True)
+
 class UserRecommendation(db.Model):
     __tablename__ = 'user_recommendation'
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     name = db.Column(db.String(100), nullable=False)
     age = db.Column(db.Integer, nullable=False)
     gender = db.Column(db.String(20), nullable=False)
@@ -24,7 +36,7 @@ class UserRecommendation(db.Model):
     recommended_plans_raw = db.Column(db.Text, nullable=True) # JSON Array of objects
     financial_insights_raw = db.Column(db.Text, nullable=True) # JSON Object
 
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Helper properties for JSON handling
     @property
@@ -74,6 +86,7 @@ class UserRecommendation(db.Model):
     def to_dict(self):
         return {
             'id': self.id,
+            'user_id': self.user_id,
             'name': self.name,
             'age': self.age,
             'gender': self.gender,
@@ -89,3 +102,4 @@ class UserRecommendation(db.Model):
             'financial_insights': self.financial_insights,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
         }
+

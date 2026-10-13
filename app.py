@@ -1,6 +1,7 @@
 import os
 import logging
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 
 # Load env variables
@@ -11,16 +12,25 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Import db and models
-from models import db, UserRecommendation
+from models import db, UserRecommendation, User
 from ai_engine import generate_insurance_recommendation
 
 app = Flask(__name__)
 
 # App Configuration
-app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY', 'default-dev-secret-key-123')
-# Use absolute path for SQLite file to ensure it's in the correct scratch directory
-db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'insuresmart.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
+app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY') or os.getenv('SECRET_KEY') or 'default-dev-secret-key-123'
+
+database_url = os.getenv('DATABASE_URL')
+if database_url:
+    # Render and Heroku use postgres://, but SQLAlchemy requires postgresql://
+    if database_url.startswith('postgres://'):
+        database_url = database_url.replace('postgres://', 'postgresql://', 1)
+    app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+else:
+    # Use absolute path for SQLite file to ensure it's in the correct directory
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'insuresmart.db')
+    app.config['SQLALCHEMY_DATABASE_URI'] = f"sqlite:///{db_path}"
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
@@ -33,6 +43,66 @@ with app.app_context():
         logger.info("Database tables initialized successfully.")
     except Exception as e:
         logger.error(f"Error initializing database: {str(e)}")
+
+# Authentication Routes
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    """User Registration Route."""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '')
+
+        if not username or not email or not password:
+            flash("All fields are required.", "danger")
+            return render_template('register.html')
+
+        if len(password) < 6:
+            flash("Password must be at least 6 characters.", "danger")
+            return render_template('register.html')
+
+        existing_user = User.query.filter((User.username == username) | (User.email == email)).first()
+        if existing_user:
+            flash("Username or email already exists.", "danger")
+            return render_template('register.html')
+
+        hashed_pw = generate_password_hash(password)
+        new_user = User(username=username, email=email, password_hash=hashed_pw)
+        db.session.add(new_user)
+        db.session.commit()
+
+        session['user_id'] = new_user.id
+        session['username'] = new_user.username
+        flash("Account created successfully! Welcome to InsureSmart.", "success")
+        return redirect(url_for('assess'))
+
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    """User Login Route."""
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '')
+
+        user = User.query.filter((User.username == username) | (User.email == username.lower())).first()
+        if user and check_password_hash(user.password_hash, password):
+            session['user_id'] = user.id
+            session['username'] = user.username
+            flash(f"Welcome back, {user.username}!", "success")
+            return redirect(url_for('history'))
+
+        flash("Invalid username/email or password.", "danger")
+        return render_template('login.html')
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    """User Logout Route."""
+    session.clear()
+    flash("You have been logged out.", "info")
+    return redirect(url_for('index'))
 
 # Server-side validation helper
 def validate_user_input(data):
@@ -110,6 +180,7 @@ def assess():
             
             # Save recommendation record in database
             rec = UserRecommendation(
+                user_id=session.get('user_id'),
                 name=form_data['name'],
                 age=int(form_data['age']),
                 gender=form_data['gender'],
@@ -143,32 +214,64 @@ def assess():
 def dashboard(rec_id):
     """Detailed visual dashboard of recommendations."""
     rec = UserRecommendation.query.get_or_404(rec_id)
+    user_id = session.get('user_id')
+    
+    # Ownership check: allow access if user owns the record or if it's an unassigned guest record
+    if rec.user_id and rec.user_id != user_id:
+        flash("You do not have permission to view this private report.", "danger")
+        return redirect(url_for('history'))
+        
     return render_template('dashboard.html', rec=rec)
 
 @app.route('/history')
 def history():
-    """Historical assessment listings with search capabilities."""
+    """Historical assessment listings with search capabilities (isolated per user)."""
     search_query = request.args.get('search', '').strip()
-    if search_query:
-        # Search by name (case-insensitive)
-        records = UserRecommendation.query.filter(
-            UserRecommendation.name.ilike(f"%{search_query}%")
-        ).order_by(UserRecommendation.created_at.desc()).all()
+    user_id = session.get('user_id')
+
+    # Strictly isolate history records based on logged-in user session
+    if user_id:
+        query = UserRecommendation.query.filter_by(user_id=user_id)
     else:
-        records = UserRecommendation.query.order_by(UserRecommendation.created_at.desc()).all()
+        query = UserRecommendation.query.filter_by(user_id=None)
+
+    if search_query:
+        query = query.filter(UserRecommendation.name.ilike(f"%{search_query}%"))
+    
+    records = query.order_by(UserRecommendation.created_at.desc()).all()
         
     return render_template('history.html', records=records, search_query=search_query)
+
+@app.route('/api/bind_proposal', methods=['POST'])
+def bind_proposal_api():
+    """Real-Time Carrier Digital Proposal Binding Endpoint."""
+    data = request.get_json() or {}
+    quote_id = data.get('quote_id', 'QTL-DEFAULT')
+    candidate_name = data.get('candidate_name', 'Client Candidate')
+    
+    from carrier_api import bind_policy_proposal
+    res = bind_policy_proposal(quote_id, candidate_name)
+    return jsonify(res)
 
 @app.route('/api/recommendation/<int:rec_id>')
 def api_recommendation(rec_id):
     """JSON API endpoint for a single record."""
     rec = UserRecommendation.query.get_or_404(rec_id)
+    user_id = session.get('user_id')
+    if rec.user_id and rec.user_id != user_id:
+        return jsonify({'error': 'Unauthorized access'}), 403
     return jsonify(rec.to_dict())
 
 @app.route('/api/delete/<int:rec_id>', methods=['POST'])
 def delete_recommendation(rec_id):
     """Deletes a recommendation record from history."""
     rec = UserRecommendation.query.get_or_404(rec_id)
+    user_id = session.get('user_id')
+    
+    if rec.user_id and rec.user_id != user_id:
+        flash("Unauthorized action.", "danger")
+        return redirect(url_for('history'))
+
     try:
         db.session.delete(rec)
         db.session.commit()
@@ -179,10 +282,18 @@ def delete_recommendation(rec_id):
         flash("Failed to delete record.", "danger")
     return redirect(url_for('history'))
 
+@app.route('/health')
+def health_check():
+    """Health check endpoint for Render and uptime monitors."""
+    return jsonify({'status': 'healthy', 'service': 'insuresmart'}), 200
+
 # Error Handlers
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('base.html', content_placeholder="404 - Page Not Found"), 404
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    port = int(os.getenv('PORT', 5000))
+    debug_mode = os.getenv('FLASK_DEBUG', 'False').lower() in ['true', '1']
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
+

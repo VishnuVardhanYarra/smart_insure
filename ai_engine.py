@@ -3,6 +3,7 @@ import json
 import logging
 import google.generativeai as genai
 from dotenv import load_dotenv
+from carrier_api import fetch_live_carrier_quotes
 
 # Load env files
 load_dotenv()
@@ -35,9 +36,9 @@ def generate_mock_recommendation(user_data):
 
     age = int(user_data.get('age', 30))
     annual_income = float(user_data.get('annual_income', 500000))  # INR
-    lifestyle = user_data.get('lifestyle_habits', '').lower()
-    health = user_data.get('health_conditions', '').lower()
-    preferences = user_data.get('insurance_preferences', 'Health Insurance, Term Life Insurance')
+    lifestyle = (user_data.get('lifestyle_habits') or '').lower()
+    health = (user_data.get('health_conditions') or '').lower()
+    preferences = user_data.get('insurance_preferences') or 'Health Insurance, Term Life Insurance'
 
     # Base risk score
     risk_score = 25
@@ -183,12 +184,15 @@ def generate_mock_recommendation(user_data):
         )
     }
 
+    live_quotes = fetch_live_carrier_quotes(user_data, risk_score)
+
     return {
         "risk_score": risk_score,
         "risk_factors": risk_factors,
         "premium_estimates": premium_estimates,
         "recommended_plans": recommended_plans,
-        "financial_insights": financial_insights
+        "financial_insights": financial_insights,
+        "live_carrier_quotes": live_quotes
     }
 
 
@@ -261,8 +265,11 @@ def generate_insurance_recommendation(user_data):
         if not isinstance(result.get('recommended_plans'), list):
             raise ValueError("recommended_plans must be a list.")
 
+        # Fetch real-time live carrier quotes & attach
+        result['live_carrier_quotes'] = fetch_live_carrier_quotes(user_data, result.get('risk_score', 30))
         return result
 
     except Exception as e:
         logger.error(f"Gemini API error: {str(e)}. Falling back to mock generator.")
         return generate_mock_recommendation(user_data)
+

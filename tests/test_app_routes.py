@@ -19,6 +19,13 @@ def client():
             yield client
             db.drop_all()
 
+def test_health_check(client):
+    response = client.get('/health')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['status'] == 'healthy'
+    assert data['service'] == 'insuresmart'
+
 def test_home_page(client):
     response = client.get('/')
     assert response.status_code == 200

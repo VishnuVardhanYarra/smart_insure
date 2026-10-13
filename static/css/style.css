@@ -1528,3 +1528,46 @@ textarea.form-input {
         text-align: center;
     }
 }
+
+
+/* ==========================================================================
+   Print & PDF Export Styling Optimization
+   ========================================================================== */
+@media print {
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+    .navbar, .footer, .bg-glow, .btn, button, #quoteModal, .toast-container {
+        display: none !important;
+    }
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    .dashboard-card, .glass-panel, .est-card, .plan-match-card, .profile-badge {
+        background: #ffffff !important;
+        color: #000000 !important;
+        border: 1px solid #cccccc !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+    }
+    h1, h2, h3, h4, h5, h6, strong, span, p {
+        color: #000000 !important;
+        -webkit-text-fill-color: initial !important;
+    }
+    .dashboard-hero {
+        border-bottom: 2px solid #000000 !important;
+        padding-bottom: 1rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+    .risk-circle-wrapper circle.risk-svg-bg {
+        stroke: #e0e0e0 !important;
+    }
+    .risk-circle-wrapper circle.risk-svg-progress {
+        stroke: #008055 !important;
+    }
+    .risk-score-num, .risk-score-lbl {
+        color: #000000 !important;
+    }
+}
