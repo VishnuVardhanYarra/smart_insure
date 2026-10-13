@@ -44,6 +44,7 @@
             <nav class="nav-menu" id="navMenu">
                 <a href="{{ url_for('index') }}" class="nav-link {% if request.path == '/' %}active{% endif %}"><i class="fa-solid fa-house"></i> Home</a>
                 <a href="{{ url_for('assess') }}" class="nav-link {% if request.path == '/assess' %}active{% endif %}"><i class="fa-solid fa-square-poll-horizontal"></i> Analyze Risk</a>
+                <a href="{{ url_for('retirement') }}" class="nav-link {% if request.path == '/retirement' %}active{% endif %}"><i class="fa-solid fa-calculator"></i> Retirement & Simulator</a>
                 <a href="{{ url_for('history') }}" class="nav-link {% if request.path == '/history' %}active{% endif %}"><i class="fa-solid fa-clock-rotate-left"></i> History Hub</a>
                 
                 {% if session.get('user_id') %}

@@ -1,0 +1,992 @@
+{% extends 'base.html' %}
+
+{% block title %}InsureSmart | Retirement Readiness & What-If Simulator{% endblock %}
+
+{% block content %}
+<div class="dashboard-container" style="max-width: 1280px; margin: 0 auto; padding: 1.5rem 1rem;">
+
+    <!-- Hero Header -->
+    <div class="dashboard-hero" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
+        <div>
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+                <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); padding: 0.25rem 0.75rem; border-radius: 999px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">
+                    <i class="fa-solid fa-chart-line"></i> Actuarial Financial Planning
+                </span>
+            </div>
+            <h1 style="font-size: 2.2rem; font-weight: 800; background: linear-gradient(135deg, #fff 0%, #a7f3d0 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0;">
+                Retirement Readiness & What-If Simulator
+            </h1>
+            <p class="hero-description" style="margin-top: 0.5rem; color: var(--text-secondary); max-width: 750px;">
+                Calculate your projected retirement living expenses, required nest egg, and potential financial shortfall with precision actuarial assumptions. Experiment with live "What-If" scenarios to see the exact impact of changing your retirement age, monthly savings, or expenses.
+            </p>
+        </div>
+
+        <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button onclick="window.print()" class="btn btn-secondary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;">
+                <i class="fa-solid fa-file-pdf"></i> Export Summary
+            </button>
+            <a href="{{ url_for('assess') }}" class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;">
+                <i class="fa-solid fa-shield-halved"></i> Insurance Risk Assessment
+            </a>
+        </div>
+    </div>
+
+    <!-- Mode Selector Tabs -->
+    <div style="display: flex; gap: 1rem; margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 0.75rem; overflow-x: auto;">
+        <button id="tabBtnReadiness" class="tab-pill active" onclick="switchTab('readiness')">
+            <i class="fa-solid fa-sack-dollar"></i> 1. Retirement Readiness & Gap Analysis
+        </button>
+        <button id="tabBtnSimulator" class="tab-pill" onclick="switchTab('simulator')">
+            <i class="fa-solid fa-sliders"></i> 2. "What-If" Scenario Simulator
+        </button>
+        {% if saved_plans %}
+        <button id="tabBtnSaved" class="tab-pill" onclick="switchTab('saved')">
+            <i class="fa-solid fa-bookmark"></i> Saved Simulations ({{ saved_plans|length }})
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- TAB 1: RETIREMENT READINESS & GAP ANALYSIS -->
+    <div id="sectionReadiness" class="tab-content-panel active">
+        <div style="display: grid; grid-template-columns: 1fr 1.35fr; gap: 2rem; align-items: start;">
+            
+            <!-- Left: Inputs Form -->
+            <div class="dashboard-card" style="position: sticky; top: 90px;">
+                <h3 class="card-title" style="margin-bottom: 1.25rem; font-size: 1.2rem;">
+                    <i class="fa-solid fa-calculator" style="color: #10b981;"></i> Your Financial Details
+                </h3>
+
+                <form id="readinessForm" onsubmit="handleCalculateReadiness(event)">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Current Age</label>
+                            <input type="number" id="inpCurrentAge" class="form-input" min="18" max="75" value="{{ initial_data.current_age }}" required>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Planned Retirement Age</label>
+                            <input type="number" id="inpRetirementAge" class="form-input" min="30" max="80" value="{{ initial_data.retirement_age }}" required>
+                        </div>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Current Accumulated Savings / Investments (₹)</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-vault"></i>
+                            <input type="number" id="inpCurrentSavings" class="form-input" min="0" step="10000" value="{{ initial_data.current_savings }}" required>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Existing EPF, PPF, mutual funds, stocks, and fixed deposits.</small>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Current Monthly Living Expenses (₹)</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-cart-shopping"></i>
+                            <input type="number" id="inpMonthlyExpenses" class="form-input" min="5000" step="1000" value="{{ initial_data.monthly_expenses }}" required>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Your current monthly household, food, utilities, and lifestyle spend.</small>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Regular Monthly Savings / SIP (₹)</label>
+                        <div class="input-wrapper">
+                            <i class="fa-solid fa-piggy-bank"></i>
+                            <input type="number" id="inpMonthlySavings" class="form-input" min="0" step="1000" value="{{ initial_data.monthly_savings }}" required>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.75rem;">Amount you regularly invest every month toward retirement.</small>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Post-Retire Monthly Income (₹)</label>
+                            <input type="number" id="inpRetireIncome" class="form-input" min="0" step="1000" value="{{ initial_data.expected_retirement_income }}">
+                            <small style="color: var(--text-muted); font-size: 0.72rem;">Expected pension/rental.</small>
+                        </div>
+                        <div class="form-group" style="margin: 0;">
+                            <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 0.35rem; display: block;">Annual Insurance Budget (₹)</label>
+                            <input type="number" id="inpInsuranceBudget" class="form-input" min="0" step="1000" value="{{ initial_data.annual_insurance_budget }}">
+                            <small style="color: var(--text-muted); font-size: 0.72rem;">Health & medical cover.</small>
+                        </div>
+                    </div>
+
+                    <!-- Collapsible Actuarial Assumptions -->
+                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleAssumptions()">
+                            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-primary);"><i class="fa-solid fa-gear" style="color: #3b82f6;"></i> Actuarial Assumptions</span>
+                            <i id="assumptionsChevron" class="fa-solid fa-chevron-down" style="font-size: 0.8rem; color: var(--text-muted); transition: transform 0.2s;"></i>
+                        </div>
+                        <div id="assumptionsBody" style="display: none; margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 0.85rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+                                <div>
+                                    <label style="font-size: 0.75rem; color: var(--text-muted);">Inflation Rate (% p.a.)</label>
+                                    <input type="number" id="inpInflationRate" class="form-input" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;" step="0.5" value="6.0">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem; color: var(--text-muted);">Life Expectancy (Yrs)</label>
+                                    <input type="number" id="inpLifeExpectancy" class="form-input" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;" value="85">
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <div>
+                                    <label style="font-size: 0.75rem; color: var(--text-muted);">Pre-Retire Return (%)</label>
+                                    <input type="number" id="inpPreRoi" class="form-input" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;" step="0.5" value="10.0">
+                                </div>
+                                <div>
+                                    <label style="font-size: 0.75rem; color: var(--text-muted);">Post-Retire Return (%)</label>
+                                    <input type="number" id="inpPostRoi" class="form-input" style="padding: 0.4rem 0.6rem; font-size: 0.85rem;" step="0.5" value="7.0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; font-size: 1rem; padding: 0.75rem 1rem; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                        <i class="fa-solid fa-calculator"></i> Calculate Financial Gap & Readiness
+                    </button>
+                </form>
+            </div>
+
+            <!-- Right: Results & Gap Analysis Output -->
+            <div id="readinessResultsContainer">
+                
+                <!-- Status Banner -->
+                <div id="resStatusBanner" class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem; border-left: 5px solid #10b981; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <span id="resStatusBadge" class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; padding: 0.35rem 0.85rem; border-radius: 999px; font-weight: 700; font-size: 0.85rem;">
+                            Calculating...
+                        </span>
+                        <h2 id="resStatusTitle" style="font-size: 1.5rem; font-weight: 700; margin-top: 0.5rem; margin-bottom: 0.25rem;">
+                            Retirement Readiness Overview
+                        </h2>
+                        <p id="resStatusSubtitle" style="color: var(--text-secondary); font-size: 0.9rem; margin: 0;">
+                            Based on your working timeline and living expense trajectory.
+                        </p>
+                    </div>
+
+                    <div style="text-align: right; min-width: 140px;">
+                        <div style="font-size: 2.2rem; font-weight: 800; color: #10b981;" id="resReadinessPct">--%</div>
+                        <div style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Funded Ratio</div>
+                    </div>
+                </div>
+
+                <!-- Visual Readiness Progress Bar -->
+                <div class="dashboard-card" style="margin-bottom: 1.5rem; padding: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                        <span style="font-weight: 600; color: var(--text-primary);"><i class="fa-solid fa-bullseye" style="color: #10b981;"></i> Corpus Accumulation Target</span>
+                        <span id="resProgressLabel" style="font-weight: 700; color: #10b981;">0% of target</span>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.08); border-radius: 999px; height: 16px; width: 100%; overflow: hidden; position: relative;">
+                        <div id="resProgressBar" style="background: linear-gradient(90deg, #10b981, #06b6d4); height: 100%; width: 0%; border-radius: 999px; transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.4rem;">
+                        <span>₹0</span>
+                        <span>50%</span>
+                        <span>100% Target</span>
+                        <span>150%+ Surplus</span>
+                    </div>
+                </div>
+
+                <!-- 4 Key KPI Cards -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+                    
+                    <!-- Projected Monthly Expense -->
+                    <div class="dashboard-card" style="padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(245, 158, 11, 0.15); display: flex; align-items: center; justify-content: center; color: #f59e0b; font-size: 1rem;">
+                                <i class="fa-solid fa-fire-flame-curved"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Inflated Monthly Spend</div>
+                                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">At Retirement Age</div>
+                            </div>
+                        </div>
+                        <div id="resProjMonthly" style="font-size: 1.6rem; font-weight: 800; color: #f59e0b;">₹--</div>
+                        <small id="resProjMonthlySub" style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Includes 6.0% annual inflation</small>
+                    </div>
+
+                    <!-- Required Corpus -->
+                    <div class="dashboard-card" style="padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(139, 92, 246, 0.15); display: flex; align-items: center; justify-content: center; color: #8b5cf6; font-size: 1rem;">
+                                <i class="fa-solid fa-flag-checkered"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Required Nest Egg</div>
+                                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Total Corpus Needed</div>
+                            </div>
+                        </div>
+                        <div id="resReqCorpus" style="font-size: 1.6rem; font-weight: 800; color: #8b5cf6;">₹--</div>
+                        <small id="resReqCorpusSub" style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Sustains life up to age 85</small>
+                    </div>
+
+                    <!-- Estimated Available Funds -->
+                    <div class="dashboard-card" style="padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                            <div style="width: 38px; height: 38px; border-radius: 10px; background: rgba(59, 130, 246, 0.15); display: flex; align-items: center; justify-content: center; color: #3b82f6; font-size: 1rem;">
+                                <i class="fa-solid fa-wallet"></i>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Projected Savings</div>
+                                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Available at Retirement</div>
+                            </div>
+                        </div>
+                        <div id="resAvailCorpus" style="font-size: 1.6rem; font-weight: 800; color: #3b82f6;">₹--</div>
+                        <small id="resAvailCorpusSub" style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Compounded at 10.0% p.a.</small>
+                    </div>
+
+                    <!-- Financial Gap / Surplus -->
+                    <div class="dashboard-card" style="padding: 1.25rem;">
+                        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                            <div id="resGapIconWrapper" style="width: 38px; height: 38px; border-radius: 10px; background: rgba(239, 68, 68, 0.15); display: flex; align-items: center; justify-content: center; color: #ef4444; font-size: 1rem;">
+                                <i id="resGapIcon" class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <div>
+                                <div id="resGapLabel" style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Potential Shortfall</div>
+                                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Financial Gap Analysis</div>
+                            </div>
+                        </div>
+                        <div id="resGapAmount" style="font-size: 1.6rem; font-weight: 800; color: #ef4444;">₹--</div>
+                        <small id="resGapSub" style="color: var(--text-muted); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Difference to bridge</small>
+                    </div>
+
+                </div>
+
+                <!-- Actionable Strategies to Bridge Gap -->
+                <div class="dashboard-card" style="margin-bottom: 1.5rem; padding: 1.5rem;">
+                    <h3 class="card-title" style="margin-bottom: 1rem; font-size: 1.1rem;">
+                        <i class="fa-solid fa-wand-magic-sparkles" style="color: #06b6d4;"></i> Actuarial Recommendations & Gap-Bridging Plan
+                    </h3>
+                    <ul id="resRecommendationsList" class="factors-list" style="margin: 0;">
+                        <!-- Injected via JavaScript -->
+                    </ul>
+                </div>
+
+                <!-- Clearly Stated Assumptions Disclosure Box -->
+                <div class="glass-panel" style="padding: 1.25rem; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; border: 1px solid rgba(255,255,255,0.08);">
+                    <div style="font-weight: 700; color: #fff; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fa-solid fa-circle-info" style="color: #3b82f6;"></i> Clearly Stated Assumptions & Actuarial Model
+                    </div>
+                    <p style="margin-bottom: 0.5rem;">
+                        &bull; <strong>Living Expense Inflation:</strong> Assumed at <span id="resAssumpInflation">6.0%</span> annually until retirement age. Medical & insurance inflation is adjusted at <span id="resAssumpHealth">8.0%</span> p.a.
+                    </p>
+                    <p style="margin-bottom: 0.5rem;">
+                        &bull; <strong>Real Rate of Return:</strong> Pre-retirement portfolio returns assumed at <span id="resAssumpPre">10.0%</span> p.a. (equity-debt balanced SIP). Post-retirement capital return is modeled conservatively at <span id="resAssumpPost">7.0%</span> p.a., generating a net real return of <span id="resAssumpReal">0.94%</span> p.a. over inflation.
+                    </p>
+                    <p style="margin: 0;">
+                        &bull; <strong>Drawdown Horizon:</strong> Sized for longevity to age <span id="resAssumpLife">85</span> years, including an automated 8% emergency healthcare contingency buffer.
+                    </p>
+                </div>
+
+                <!-- Save Simulation Action -->
+                <div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end; align-items: center; flex-wrap: wrap;">
+                    <span id="saveStatusMsg" style="color: #10b981; font-size: 0.85rem; display: none;">
+                        <i class="fa-solid fa-check"></i> Saved successfully to your profile!
+                    </span>
+                    <button type="button" onclick="saveCurrentPlan()" class="btn btn-secondary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem;">
+                        <i class="fa-solid fa-floppy-disk"></i> Save to Profile
+                    </button>
+                    <button type="button" onclick="switchToSimulatorWithCurrent()" class="btn btn-primary" style="padding: 0.6rem 1.2rem; font-size: 0.9rem; background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);">
+                        <i class="fa-solid fa-sliders"></i> Test Scenarios in Simulator &rarr;
+                    </button>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TAB 2: "WHAT-IF" SCENARIO SIMULATOR -->
+    <div id="sectionSimulator" class="tab-content-panel" style="display: none;">
+        
+        <!-- Simulator Controls & What-If Header -->
+        <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 2rem; border-left: 5px solid #06b6d4;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                    <h2 style="font-size: 1.5rem; font-weight: 700; margin: 0 0 0.5rem 0;">
+                        <i class="fa-solid fa-sliders" style="color: #06b6d4;"></i> Dynamic "What-If" Scenario Simulator
+                    </h2>
+                    <p style="color: var(--text-secondary); font-size: 0.95rem; margin: 0; max-width: 800px;">
+                        Adjust any variable in real time to see how early retirement, higher savings, or lifestyle adjustments shift your projected nest egg and financial gap.
+                    </p>
+                </div>
+                
+                <!-- Quick Preset Buttons -->
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                    <span style="font-size: 0.8rem; color: var(--text-muted); margin-right: 0.25rem;">Quick Scenarios:</span>
+                    <button class="chip-btn" onclick="applyPreset('retire55')">Retire at 55</button>
+                    <button class="chip-btn" onclick="applyPreset('retire50')">Retire at 50</button>
+                    <button class="chip-btn" onclick="applyPreset('plus10k')">+₹10,000/mo SIP</button>
+                    <button class="chip-btn" onclick="applyPreset('cutExpenses')">-20% Expenses</button>
+                    <button class="chip-btn" onclick="resetToBaseline()" style="background: rgba(255,255,255,0.05); color: #fff;">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.1fr 1.3fr; gap: 2rem; align-items: start;">
+            
+            <!-- Left: Interactive Sliders -->
+            <div class="dashboard-card" style="padding: 1.5rem;">
+                <h3 class="card-title" style="margin-bottom: 1.5rem; font-size: 1.15rem;">
+                    <i class="fa-solid fa-wrench" style="color: #06b6d4;"></i> Adjust Scenario Parameters
+                </h3>
+
+                <!-- Slider 1: Retirement Age -->
+                <div class="slider-control-group" style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                            Planned Retirement Age
+                        </label>
+                        <span id="valSimRetireAge" class="slider-value-pill">60 yrs</span>
+                    </div>
+                    <input type="range" id="simRetireAge" min="45" max="75" step="1" value="60" class="custom-slider" oninput="runLiveSimulation()">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        <span>45 yrs (Early FIRE)</span>
+                        <span>55 yrs</span>
+                        <span>60 yrs (Standard)</span>
+                        <span>75 yrs</span>
+                    </div>
+                </div>
+
+                <!-- Slider 2: Regular Monthly Savings (SIP) -->
+                <div class="slider-control-group" style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                            Monthly Savings / SIP
+                        </label>
+                        <span id="valSimMonthlySavings" class="slider-value-pill">₹15,000</span>
+                    </div>
+                    <input type="range" id="simMonthlySavings" min="0" max="150000" step="2500" value="15000" class="custom-slider" oninput="runLiveSimulation()">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        <span>₹0</span>
+                        <span>₹50,000</span>
+                        <span>₹1,00,000</span>
+                        <span>₹1,50,000/mo</span>
+                    </div>
+                </div>
+
+                <!-- Slider 3: Monthly Expenses -->
+                <div class="slider-control-group" style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                            Monthly Living Expenses
+                        </label>
+                        <span id="valSimMonthlyExpenses" class="slider-value-pill">₹40,000</span>
+                    </div>
+                    <input type="range" id="simMonthlyExpenses" min="15000" max="250000" step="5000" value="40000" class="custom-slider" oninput="runLiveSimulation()">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        <span>₹15,000</span>
+                        <span>₹1,00,000</span>
+                        <span>₹2,50,000/mo</span>
+                    </div>
+                </div>
+
+                <!-- Slider 4: Post-Retirement Monthly Income -->
+                <div class="slider-control-group" style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                            Post-Retirement Monthly Income (Pension/Rental)
+                        </label>
+                        <span id="valSimRetireIncome" class="slider-value-pill">₹0</span>
+                    </div>
+                    <input type="range" id="simRetireIncome" min="0" max="100000" step="5000" value="0" class="custom-slider" oninput="runLiveSimulation()">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        <span>₹0</span>
+                        <span>₹50,000</span>
+                        <span>₹1,00,000/mo</span>
+                    </div>
+                </div>
+
+                <!-- Slider 5: Annual Healthcare & Insurance Budget -->
+                <div class="slider-control-group">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <label style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                            Annual Health & Insurance Protection Budget
+                        </label>
+                        <span id="valSimInsuranceBudget" class="slider-value-pill">₹25,000</span>
+                    </div>
+                    <input type="range" id="simInsuranceBudget" min="0" max="100000" step="5000" value="25000" class="custom-slider" oninput="runLiveSimulation()">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                        <span>₹0</span>
+                        <span>₹50,000</span>
+                        <span>₹1,00,000/yr</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right: Side-by-Side Comparison & Dynamic Insights -->
+            <div>
+
+                <!-- Dynamic Actuarial Insight Callout -->
+                <div class="glass-panel" style="padding: 1.5rem; margin-bottom: 1.5rem; border-left: 5px solid #8b5cf6;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.75rem;">
+                        <div style="width: 32px; height: 32px; border-radius: 8px; background: rgba(139, 92, 246, 0.2); display: flex; align-items: center; justify-content: center; color: #a78bfa;">
+                            <i class="fa-solid fa-brain"></i>
+                        </div>
+                        <h4 style="margin: 0; font-size: 1.05rem; font-weight: 700; color: #fff;">
+                            Scenario Impact Analysis
+                        </h4>
+                    </div>
+                    <div id="simInsightText" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary);">
+                        Adjusting sliders calculates live impact against your baseline...
+                    </div>
+                </div>
+
+                <!-- Side-by-side Comparison Matrix -->
+                <div class="dashboard-card" style="padding: 1.5rem; margin-bottom: 1.5rem;">
+                    <h3 class="card-title" style="margin-bottom: 1.25rem; font-size: 1.15rem;">
+                        <i class="fa-solid fa-code-compare" style="color: #3b82f6;"></i> Baseline vs. What-If Comparison
+                    </h3>
+
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left;">
+                                    <th style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Metric</th>
+                                    <th style="padding: 0.75rem 0.5rem; color: #9ca3af; font-size: 0.8rem; text-transform: uppercase;">Baseline Plan</th>
+                                    <th style="padding: 0.75rem 0.5rem; color: #06b6d4; font-size: 0.8rem; text-transform: uppercase;">What-If Scenario</th>
+                                    <th style="padding: 0.75rem 0.5rem; color: #fff; font-size: 0.8rem; text-transform: uppercase; text-align: right;">Difference (Delta)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.85rem 0.5rem; font-weight: 600;">Retirement Age</td>
+                                    <td id="tblBaseAge" style="padding: 0.85rem 0.5rem;">60 yrs</td>
+                                    <td id="tblScenAge" style="padding: 0.85rem 0.5rem; color: #06b6d4; font-weight: 700;">55 yrs</td>
+                                    <td id="tblDeltaAge" style="padding: 0.85rem 0.5rem; text-align: right; font-weight: 700;">-5 yrs</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.85rem 0.5rem; font-weight: 600;">Monthly SIP</td>
+                                    <td id="tblBaseSIP" style="padding: 0.85rem 0.5rem;">₹15,000</td>
+                                    <td id="tblScenSIP" style="padding: 0.85rem 0.5rem; color: #06b6d4; font-weight: 700;">₹15,000</td>
+                                    <td id="tblDeltaSIP" style="padding: 0.85rem 0.5rem; text-align: right; font-weight: 700;">₹0</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.85rem 0.5rem; font-weight: 600;">Required Corpus</td>
+                                    <td id="tblBaseReq" style="padding: 0.85rem 0.5rem;">₹--</td>
+                                    <td id="tblScenReq" style="padding: 0.85rem 0.5rem; color: #06b6d4; font-weight: 700;">₹--</td>
+                                    <td id="tblDeltaReq" style="padding: 0.85rem 0.5rem; text-align: right; font-weight: 700;">--</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.85rem 0.5rem; font-weight: 600;">Available Corpus</td>
+                                    <td id="tblBaseAvail" style="padding: 0.85rem 0.5rem;">₹--</td>
+                                    <td id="tblScenAvail" style="padding: 0.85rem 0.5rem; color: #06b6d4; font-weight: 700;">₹--</td>
+                                    <td id="tblDeltaAvail" style="padding: 0.85rem 0.5rem; text-align: right; font-weight: 700;">--</td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                                    <td style="padding: 0.85rem 0.5rem; font-weight: 600;">Financial Gap / Surplus</td>
+                                    <td id="tblBaseGap" style="padding: 0.85rem 0.5rem;">₹--</td>
+                                    <td id="tblScenGap" style="padding: 0.85rem 0.5rem; font-weight: 700;">₹--</td>
+                                    <td id="tblDeltaGap" style="padding: 0.85rem 0.5rem; text-align: right; font-weight: 700;">--</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 0.85rem 0.5rem; font-weight: 600;">Funded Readiness %</td>
+                                    <td id="tblBasePct" style="padding: 0.85rem 0.5rem;">--%</td>
+                                    <td id="tblScenPct" style="padding: 0.85rem 0.5rem; font-weight: 700;">--%</td>
+                                    <td id="tblDeltaPct" style="padding: 0.85rem 0.5rem; text-align: right; font-weight: 700;">--%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Scenario Readiness Bar Comparison -->
+                <div class="dashboard-card" style="padding: 1.25rem;">
+                    <div style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.35rem;">
+                            <span style="color: var(--text-muted);">Baseline Plan Readiness</span>
+                            <span id="lblBaseProgress" style="font-weight: 700;">--%</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.08); border-radius: 999px; height: 10px; overflow: hidden;">
+                            <div id="barBaseProgress" style="background: #9ca3af; height: 100%; width: 0%; border-radius: 999px; transition: width 0.4s ease;"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.35rem;">
+                            <span style="color: #06b6d4; font-weight: 600;">What-If Scenario Readiness</span>
+                            <span id="lblScenProgress" style="font-weight: 700; color: #06b6d4;">--%</span>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.08); border-radius: 999px; height: 10px; overflow: hidden;">
+                            <div id="barScenProgress" style="background: linear-gradient(90deg, #06b6d4, #10b981); height: 100%; width: 0%; border-radius: 999px; transition: width 0.4s ease;"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TAB 3: SAVED SIMULATIONS -->
+    {% if saved_plans %}
+    <div id="sectionSaved" class="tab-content-panel" style="display: none;">
+        <div class="dashboard-card" style="padding: 1.5rem;">
+            <h3 class="card-title" style="margin-bottom: 1.25rem; font-size: 1.2rem;">
+                <i class="fa-solid fa-bookmark" style="color: #10b981;"></i> Your Saved Retirement Analysis Records
+            </h3>
+
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); text-align: left;">
+                            <th style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.8rem;">Date</th>
+                            <th style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.8rem;">Timeline</th>
+                            <th style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.8rem;">Monthly Exp.</th>
+                            <th style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.8rem;">Required Corpus</th>
+                            <th style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.8rem;">Available Corpus</th>
+                            <th style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.8rem;">Gap / Surplus</th>
+                            <th style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.8rem;">Readiness</th>
+                            <th style="padding: 0.75rem 0.5rem; color: var(--text-muted); font-size: 0.8rem; text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for plan in saved_plans %}
+                        <tr id="saved-row-{{ plan.id }}" style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 0.85rem 0.5rem; color: var(--text-muted);">{{ plan.created_at.strftime('%b %d, %Y') if plan.created_at else 'Recent' }}</td>
+                            <td style="padding: 0.85rem 0.5rem;">Age {{ plan.current_age }} &rarr; <strong>{{ plan.retirement_age }}</strong></td>
+                            <td style="padding: 0.85rem 0.5rem;">₹{{ "{:,.0f}".format(plan.monthly_expenses) }}</td>
+                            <td style="padding: 0.85rem 0.5rem; font-weight: 600;">₹{{ "{:,.0f}".format(plan.required_corpus) }}</td>
+                            <td style="padding: 0.85rem 0.5rem; font-weight: 600; color: #3b82f6;">₹{{ "{:,.0f}".format(plan.available_corpus) }}</td>
+                            <td style="padding: 0.85rem 0.5rem; font-weight: 700; color: {% if plan.financial_gap > 0 %}#ef4444{% else %}#10b981{% endif %};">
+                                {% if plan.financial_gap > 0 %}
+                                    -₹{{ "{:,.0f}".format(plan.financial_gap) }} (Gap)
+                                {% else %}
+                                    +₹{{ "{:,.0f}".format(plan.financial_gap|abs) }} (Surplus)
+                                {% endif %}
+                            </td>
+                            <td style="padding: 0.85rem 0.5rem;">
+                                <span class="badge" style="background: rgba({% if plan.readiness_percentage >= 100 %}16, 185, 129{% elif plan.readiness_percentage >= 75 %}245, 158, 11{% else %}239, 68, 68{% endif %}, 0.2); color: {% if plan.readiness_percentage >= 100 %}#10b981{% elif plan.readiness_percentage >= 75 %}#f59e0b{% else %}#ef4444{% endif %}; padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 700;">
+                                    {{ plan.readiness_percentage }}%
+                                </span>
+                            </td>
+                            <td style="padding: 0.85rem 0.5rem; text-align: right;">
+                                <button onclick="deleteSavedPlan({{ plan.id }})" class="btn" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 0.3rem 0.6rem; font-size: 0.8rem; border-radius: 6px;">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<!-- Interactive JS Logic -->
+<script>
+let currentReadinessResult = null;
+let debounceTimer = null;
+
+function switchTab(tabId) {
+    document.querySelectorAll('.tab-pill').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content-panel').forEach(panel => panel.style.display = 'none');
+
+    if (tabId === 'readiness') {
+        document.getElementById('tabBtnReadiness').classList.add('active');
+        document.getElementById('sectionReadiness').style.display = 'block';
+    } else if (tabId === 'simulator') {
+        document.getElementById('tabBtnSimulator').classList.add('active');
+        document.getElementById('sectionSimulator').style.display = 'block';
+        initSimulatorFromReadiness();
+    } else if (tabId === 'saved') {
+        document.getElementById('tabBtnSaved').classList.add('active');
+        document.getElementById('sectionSaved').style.display = 'block';
+    }
+}
+
+function toggleAssumptions() {
+    const body = document.getElementById('assumptionsBody');
+    const chevron = document.getElementById('assumptionsChevron');
+    if (body.style.display === 'none' || !body.style.display) {
+        body.style.display = 'block';
+        chevron.style.transform = 'rotate(180deg)';
+    } else {
+        body.style.display = 'none';
+        chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+function getReadinessFormData() {
+    return {
+        current_age: parseInt(document.getElementById('inpCurrentAge').value) || 30,
+        retirement_age: parseInt(document.getElementById('inpRetirementAge').value) || 60,
+        current_savings: parseFloat(document.getElementById('inpCurrentSavings').value) || 0,
+        monthly_expenses: parseFloat(document.getElementById('inpMonthlyExpenses').value) || 40000,
+        monthly_savings: parseFloat(document.getElementById('inpMonthlySavings').value) || 15000,
+        expected_retirement_income: parseFloat(document.getElementById('inpRetireIncome').value) || 0,
+        annual_insurance_budget: parseFloat(document.getElementById('inpInsuranceBudget').value) || 25000,
+        inflation_rate: parseFloat(document.getElementById('inpInflationRate').value) || 6.0,
+        life_expectancy: parseInt(document.getElementById('inpLifeExpectancy').value) || 85,
+        pre_retire_roi: parseFloat(document.getElementById('inpPreRoi').value) || 10.0,
+        post_retire_roi: parseFloat(document.getElementById('inpPostRoi').value) || 7.0
+    };
+}
+
+async function handleCalculateReadiness(e) {
+    if (e) e.preventDefault();
+    const payload = getReadinessFormData();
+
+    try {
+        const resp = await fetch("{{ url_for('api_retirement_calculate') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (data.success) {
+            currentReadinessResult = data;
+            renderReadinessOutput(data);
+        } else {
+            alert('Calculation error: ' + (data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function renderReadinessOutput(data) {
+    // Percent & progress
+    const pct = data.readiness_percentage;
+    document.getElementById('resReadinessPct').textContent = pct + '%';
+    document.getElementById('resProgressLabel').textContent = pct + '% of target';
+    document.getElementById('resProgressBar').style.width = Math.min(100, pct) + '%';
+
+    // Status Banner
+    const badge = document.getElementById('resStatusBadge');
+    const banner = document.getElementById('resStatusBanner');
+    const title = document.getElementById('resStatusTitle');
+    const subtitle = document.getElementById('resStatusSubtitle');
+    const gapIconWrap = document.getElementById('resGapIconWrapper');
+    const gapIcon = document.getElementById('resGapIcon');
+    const gapLabel = document.getElementById('resGapLabel');
+    const gapAmount = document.getElementById('resGapAmount');
+
+    badge.textContent = data.status_label;
+
+    if (data.status === 'surplus') {
+        badge.style.background = 'rgba(16, 185, 129, 0.2)';
+        badge.style.color = '#10b981';
+        banner.style.borderLeftColor = '#10b981';
+        document.getElementById('resReadinessPct').style.color = '#10b981';
+        title.textContent = '🎉 Fully Funded Retirement Profile!';
+        subtitle.textContent = `Your projected savings surpass your required corpus by ${data.formatted.abs_financial_gap}.`;
+
+        gapIconWrap.style.background = 'rgba(16, 185, 129, 0.15)';
+        gapIconWrap.style.color = '#10b981';
+        gapIcon.className = 'fa-solid fa-circle-check';
+        gapLabel.textContent = 'Projected Surplus';
+        gapAmount.textContent = '+' + data.formatted.abs_financial_gap;
+        gapAmount.style.color = '#10b981';
+    } else {
+        badge.style.background = data.status === 'moderate_gap' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+        badge.style.color = data.status === 'moderate_gap' ? '#f59e0b' : '#ef4444';
+        banner.style.borderLeftColor = data.status === 'moderate_gap' ? '#f59e0b' : '#ef4444';
+        document.getElementById('resReadinessPct').style.color = data.status === 'moderate_gap' ? '#f59e0b' : '#ef4444';
+        title.textContent = data.status === 'moderate_gap' ? '⚠️ Moderate Retirement Gap Identified' : '🚨 Critical Retirement Shortfall Flagged';
+        subtitle.textContent = `A shortfall of ${data.formatted.abs_financial_gap} is projected by age ${data.retirement_age}. Follow the bridging plan below.`;
+
+        gapIconWrap.style.background = 'rgba(239, 68, 68, 0.15)';
+        gapIconWrap.style.color = '#ef4444';
+        gapIcon.className = 'fa-solid fa-triangle-exclamation';
+        gapLabel.textContent = 'Potential Shortfall';
+        gapAmount.textContent = '-' + data.formatted.abs_financial_gap;
+        gapAmount.style.color = '#ef4444';
+    }
+
+    // 4 KPI Cards
+    document.getElementById('resProjMonthly').textContent = data.formatted.projected_monthly_expense;
+    document.getElementById('resProjMonthlySub').textContent = `In ${data.years_to_retire} years at ${data.assumptions.inflation_rate}% inflation`;
+    document.getElementById('resReqCorpus').textContent = data.formatted.required_corpus;
+    document.getElementById('resReqCorpusSub').textContent = `Covers ${data.years_in_retire} yrs to age ${data.life_expectancy}`;
+    document.getElementById('resAvailCorpus').textContent = data.formatted.total_available_corpus;
+    document.getElementById('resAvailCorpusSub').textContent = `Growth at ${data.assumptions.pre_retire_roi}% ROI`;
+
+    // Recommendations list
+    const recList = document.getElementById('resRecommendationsList');
+    recList.innerHTML = '';
+    data.recommendations.forEach(rec => {
+        const li = document.createElement('li');
+        li.innerHTML = `<i class="fa-solid fa-circle-arrow-right" style="color: #10b981;"></i><span>${rec}</span>`;
+        recList.appendChild(li);
+    });
+
+    // Assumptions display
+    document.getElementById('resAssumpInflation').textContent = data.assumptions.inflation_rate + '%';
+    document.getElementById('resAssumpHealth').textContent = data.assumptions.health_inflation_rate + '%';
+    document.getElementById('resAssumpPre').textContent = data.assumptions.pre_retire_roi + '%';
+    document.getElementById('resAssumpPost').textContent = data.assumptions.post_retire_roi + '%';
+    document.getElementById('resAssumpReal').textContent = data.assumptions.real_rate + '%';
+    document.getElementById('resAssumpLife').textContent = data.assumptions.life_expectancy;
+}
+
+// Save simulation
+async function saveCurrentPlan() {
+    const payload = getReadinessFormData();
+    payload.save_to_profile = true;
+
+    try {
+        const resp = await fetch("{{ url_for('api_retirement_calculate') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (data.saved_id) {
+            const msg = document.getElementById('saveStatusMsg');
+            msg.style.display = 'inline-block';
+            setTimeout(() => { msg.style.display = 'none'; }, 4000);
+        } else {
+            alert('Please login to save retirement plans to your history profile.');
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function deleteSavedPlan(planId) {
+    if (!confirm('Are you sure you want to delete this retirement record?')) return;
+    try {
+        const resp = await fetch(`/api/retirement/delete/${planId}`, { method: 'POST' });
+        const data = await resp.json();
+        if (data.success) {
+            const row = document.getElementById(`saved-row-${planId}`);
+            if (row) row.remove();
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+// -------------------------------------------------------------
+// WHAT-IF SIMULATOR INTERACTIVE LOGIC
+// -------------------------------------------------------------
+function switchToSimulatorWithCurrent() {
+    switchTab('simulator');
+}
+
+function initSimulatorFromReadiness() {
+    const base = getReadinessFormData();
+    
+    // Sync slider positions with baseline form
+    document.getElementById('simRetireAge').value = base.retirement_age;
+    document.getElementById('simMonthlySavings').value = base.monthly_savings;
+    document.getElementById('simMonthlyExpenses').value = base.monthly_expenses;
+    document.getElementById('simRetireIncome').value = base.expected_retirement_income;
+    document.getElementById('simInsuranceBudget').value = base.annual_insurance_budget;
+
+    updateSliderLabelPills();
+    runLiveSimulation();
+}
+
+function updateSliderLabelPills() {
+    document.getElementById('valSimRetireAge').textContent = document.getElementById('simRetireAge').value + ' yrs';
+    document.getElementById('valSimMonthlySavings').textContent = '₹' + parseInt(document.getElementById('simMonthlySavings').value).toLocaleString('en-IN');
+    document.getElementById('valSimMonthlyExpenses').textContent = '₹' + parseInt(document.getElementById('simMonthlyExpenses').value).toLocaleString('en-IN');
+    document.getElementById('valSimRetireIncome').textContent = '₹' + parseInt(document.getElementById('simRetireIncome').value).toLocaleString('en-IN');
+    document.getElementById('valSimInsuranceBudget').textContent = '₹' + parseInt(document.getElementById('simInsuranceBudget').value).toLocaleString('en-IN');
+}
+
+function applyPreset(preset) {
+    const base = getReadinessFormData();
+    if (preset === 'retire55') {
+        document.getElementById('simRetireAge').value = 55;
+    } else if (preset === 'retire50') {
+        document.getElementById('simRetireAge').value = 50;
+    } else if (preset === 'plus10k') {
+        document.getElementById('simMonthlySavings').value = base.monthly_savings + 10000;
+    } else if (preset === 'cutExpenses') {
+        document.getElementById('simMonthlyExpenses').value = Math.round(base.monthly_expenses * 0.8);
+    }
+    updateSliderLabelPills();
+    runLiveSimulation();
+}
+
+function resetToBaseline() {
+    initSimulatorFromReadiness();
+}
+
+function runLiveSimulation() {
+    updateSliderLabelPills();
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(executeSimulatorApiCall, 150);
+}
+
+async function executeSimulatorApiCall() {
+    const baseline = getReadinessFormData();
+    const scenario = {
+        current_age: baseline.current_age,
+        retirement_age: parseInt(document.getElementById('simRetireAge').value),
+        current_savings: baseline.current_savings,
+        monthly_expenses: parseFloat(document.getElementById('simMonthlyExpenses').value),
+        monthly_savings: parseFloat(document.getElementById('simMonthlySavings').value),
+        expected_retirement_income: parseFloat(document.getElementById('simRetireIncome').value),
+        annual_insurance_budget: parseFloat(document.getElementById('simInsuranceBudget').value),
+        inflation_rate: baseline.inflation_rate,
+        life_expectancy: baseline.life_expectancy,
+        pre_retire_roi: baseline.pre_retire_roi,
+        post_retire_roi: baseline.post_retire_roi
+    };
+
+    try {
+        const resp = await fetch("{{ url_for('api_retirement_simulate') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ baseline, scenario })
+        });
+        const res = await resp.json();
+        if (res.success) {
+            renderSimulatorOutput(res);
+        }
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+function renderSimulatorOutput(res) {
+    const b = res.baseline;
+    const s = res.scenario;
+    const d = res.deltas;
+
+    // Table rows
+    document.getElementById('tblBaseAge').textContent = b.retirement_age + ' yrs';
+    document.getElementById('tblScenAge').textContent = s.retirement_age + ' yrs';
+    const deltaAge = s.retirement_age - b.retirement_age;
+    document.getElementById('tblDeltaAge').textContent = (deltaAge > 0 ? '+' : '') + deltaAge + ' yrs';
+    document.getElementById('tblDeltaAge').style.color = deltaAge < 0 ? '#f59e0b' : (deltaAge > 0 ? '#10b981' : '#9ca3af');
+
+    document.getElementById('tblBaseSIP').textContent = b.formatted.monthly_savings;
+    document.getElementById('tblScenSIP').textContent = s.formatted.monthly_savings;
+    const deltaSIP = s.monthly_savings - b.monthly_savings;
+    document.getElementById('tblDeltaSIP').textContent = (deltaSIP > 0 ? '+' : '') + '₹' + Math.abs(deltaSIP).toLocaleString('en-IN');
+    document.getElementById('tblDeltaSIP').style.color = deltaSIP > 0 ? '#10b981' : (deltaSIP < 0 ? '#ef4444' : '#9ca3af');
+
+    document.getElementById('tblBaseReq').textContent = b.formatted.required_corpus;
+    document.getElementById('tblScenReq').textContent = s.formatted.required_corpus;
+    document.getElementById('tblDeltaReq').textContent = (d.delta_required_corpus > 0 ? '+' : '-') + d.formatted.delta_required_corpus;
+    document.getElementById('tblDeltaReq').style.color = d.delta_required_corpus > 0 ? '#ef4444' : '#10b981';
+
+    document.getElementById('tblBaseAvail').textContent = b.formatted.total_available_corpus;
+    document.getElementById('tblScenAvail').textContent = s.formatted.total_available_corpus;
+    document.getElementById('tblDeltaAvail').textContent = (d.delta_available_corpus > 0 ? '+' : '-') + d.formatted.delta_available_corpus;
+    document.getElementById('tblDeltaAvail').style.color = d.delta_available_corpus >= 0 ? '#10b981' : '#ef4444';
+
+    document.getElementById('tblBaseGap').textContent = b.financial_gap > 0 ? '-' + b.formatted.financial_gap + ' (Gap)' : '+' + b.formatted.abs_financial_gap + ' (Surplus)';
+    document.getElementById('tblScenGap').textContent = s.financial_gap > 0 ? '-' + s.formatted.financial_gap + ' (Gap)' : '+' + s.formatted.abs_financial_gap + ' (Surplus)';
+    document.getElementById('tblScenGap').style.color = s.financial_gap > 0 ? '#ef4444' : '#10b981';
+    document.getElementById('tblDeltaGap').textContent = (d.delta_gap > 0 ? '+' : '-') + d.formatted.delta_gap;
+    document.getElementById('tblDeltaGap').style.color = d.delta_gap > 0 ? '#ef4444' : '#10b981';
+
+    document.getElementById('tblBasePct').textContent = b.readiness_percentage + '%';
+    document.getElementById('tblScenPct').textContent = s.readiness_percentage + '%';
+    document.getElementById('tblScenPct').style.color = s.readiness_percentage >= 100 ? '#10b981' : (s.readiness_percentage >= 75 ? '#f59e0b' : '#ef4444');
+    document.getElementById('tblDeltaPct').textContent = (d.delta_readiness > 0 ? '+' : '') + d.delta_readiness + '%';
+    document.getElementById('tblDeltaPct').style.color = d.delta_readiness >= 0 ? '#10b981' : '#ef4444';
+
+    // Progress Bars
+    document.getElementById('lblBaseProgress').textContent = b.readiness_percentage + '%';
+    document.getElementById('barBaseProgress').style.width = Math.min(100, b.readiness_percentage) + '%';
+    document.getElementById('lblScenProgress').textContent = s.readiness_percentage + '%';
+    document.getElementById('barScenProgress').style.width = Math.min(100, s.readiness_percentage) + '%';
+
+    // Actuarial commentary
+    const insightBox = document.getElementById('simInsightText');
+    if (res.actuarial_insights && res.actuarial_insights.length > 0) {
+        insightBox.innerHTML = res.actuarial_insights.map(txt => `<p style="margin-bottom: 0.5rem;"><i class="fa-solid fa-arrow-trend-up" style="color: #06b6d4; margin-right: 0.5rem;"></i>${txt}</p>`).join('');
+    } else {
+        insightBox.innerHTML = '<p>Scenario matches baseline.</p>';
+    }
+}
+
+// Initial calculation on page load
+document.addEventListener('DOMContentLoaded', () => {
+    handleCalculateReadiness();
+});
+</script>
+
+<style>
+/* Retirement Tabs & Simulator Styling */
+.tab-pill {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    font-weight: 600;
+    padding: 0.6rem 1.25rem;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+.tab-pill:hover {
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.05);
+}
+.tab-pill.active {
+    color: #fff;
+    background: rgba(16, 185, 129, 0.18);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+.slider-value-pill {
+    background: rgba(6, 182, 212, 0.15);
+    color: #06b6d4;
+    border: 1px solid rgba(6, 182, 212, 0.3);
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+.chip-btn {
+    background: rgba(6, 182, 212, 0.12);
+    color: #06b6d4;
+    border: 1px solid rgba(6, 182, 212, 0.25);
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.chip-btn:hover {
+    background: rgba(6, 182, 212, 0.25);
+    border-color: #06b6d4;
+    color: #fff;
+}
+.custom-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    outline: none;
+    margin: 0.75rem 0;
+}
+.custom-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #06b6d4;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+    transition: transform 0.15s ease;
+}
+.custom-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+.custom-slider::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #06b6d4;
+    cursor: pointer;
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+}
+</style>
+{% endblock %}

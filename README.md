@@ -11,22 +11,26 @@ The application features a premium, responsive glassmorphism dark-theme dashboar
 ## Key Features
 
 1. **🤖 Google Gemini Generative AI Actuary:** Analyzes candidate demographics, health conditions, and lifestyle habits using `gemini-2.5-flash` with structured JSON output enforcement.
-2. **🏬 Real-Time Carrier API & Proposal Binding Engine:** Queries live underwriting rates from top Indian insurers (HDFC Life, Star Health, ICICI Lombard, Niva Bupa, Max Life), calculates statutory 18% GST, rider add-ons, and executes digital policy proposals (`/api/bind_proposal`).
-3. **🔒 User Authentication & Strict Data Isolation:** Features secure user registration, password hashing (`werkzeug.security`), session login/logout, and strict user-isolated assessment histories (User A cannot view User B's records).
-4. **📄 Single-Click PDF Report Export:** Print CSS ruleset (`@media print`) that formats the dark-mode dashboard into a clean, high-contrast, professional A4 printable PDF report.
-5. **🛡️ Dual-Mode Native Fallback:** If Gemini API keys are missing or offline, the app seamlessly activates an internal mathematical actuarial engine without failing.
-6. **📊 Financial Liquidity & Debt-to-Income Insights:** Evaluates premium-to-income ratios against 5-10% personal finance standards, suggests 6-month emergency corpus allocations, and highlights premium savings tips.
+2. **🏖️ Retirement Readiness & Financial Gap Analysis:** Lets users input planned retirement age, current savings, monthly living expenses, ongoing savings, and expected pension. Computes future inflated expenses, required nest egg, accumulated funds, and potential shortfall with clearly disclosed actuarial assumptions.
+3. **🎛️ Interactive "What-If" Scenario Simulator:** Dynamic real-time sliders and quick presets allowing users to test adjustments (e.g., *"What happens if I retire at 55 instead of 60?"* or *"+₹10,000/mo SIP"*), displaying instant side-by-side comparative deltas and AI actuarial commentary.
+4. **🏬 Real-Time Carrier API & Proposal Binding Engine:** Queries live underwriting rates from top Indian insurers (HDFC Life, Star Health, ICICI Lombard, Niva Bupa, Max Life), calculates statutory 18% GST, rider add-ons, and executes digital policy proposals (`/api/bind_proposal`).
+5. **🔒 User Authentication & Strict Data Isolation:** Features secure user registration, password hashing (`werkzeug.security`), session login/logout, and strict user-isolated assessment histories.
+6. **📄 Single-Click PDF Report Export:** Print CSS ruleset (`@media print`) that formats the dark-mode dashboard into a clean, high-contrast, professional A4 printable PDF report.
+7. **🛡️ Dual-Mode Native Fallback:** If Gemini API keys are missing or offline, the app seamlessly activates an internal mathematical actuarial engine without failing.
+8. **📊 Financial Liquidity & Debt-to-Income Insights:** Evaluates premium-to-income ratios against 5-10% personal finance standards, suggests 6-month emergency corpus allocations, and highlights premium savings tips.
 
 ---
 
 ## Technical Stack
-- **Backend Framework:** Flask (Python 3.13+)
-- **Database ORM:** Flask-SQLAlchemy (SQLite)
+- **Backend Framework:** Flask (Python 3.11 / 3.13)
+- **Database ORM:** Flask-SQLAlchemy (SQLite / PostgreSQL ready)
 - **Security & Auth:** Werkzeug Security (Password Hashing) & Flask Session Management
 - **AI Integration:** Google Gemini SDK (`gemini-2.5-flash` with Structured JSON outputs)
 - **Carrier Engine:** Real-Time Indian Insurer Quote Calculation & Proposal Binding (`carrier_api.py`)
-- **Design System:** Custom Vanilla CSS (Frosted Glassmorphism, Neon gradients, Plus Jakarta Sans typography, Print CSS)
-- **Testing Engine:** Pytest (18 Unit, Integration, Auth, & Carrier API tests)
+- **Actuarial Retirement Engine:** Real-Rate Annuity & Compounding Simulator (`retirement_engine.py`)
+- **Design System:** Custom Vanilla CSS (Frosted Glassmorphism, Neon gradients, Sliders, Print CSS)
+- **Testing Engine:** Pytest (27 Unit, Integration, Retirement, Auth, & Carrier API tests)
+
 
 ---
 
@@ -103,7 +107,7 @@ To verify core logic, carrier engine, user auth, health check, and route integra
 ```powershell
 pytest
 ```
-*All 19 tests will pass successfully!*
+*All 27 tests will pass successfully!*
 
 ---
 

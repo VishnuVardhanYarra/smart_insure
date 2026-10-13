@@ -12,8 +12,9 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger(__name__)
 
 # Import db and models
-from models import db, UserRecommendation, User
+from models import db, UserRecommendation, User, RetirementPlan
 from ai_engine import generate_insurance_recommendation
+from retirement_engine import calculate_retirement_gap, simulate_what_if, format_inr
 
 app = Flask(__name__)
 
@@ -281,6 +282,89 @@ def delete_recommendation(rec_id):
         logger.error(f"Error deleting record: {str(e)}")
         flash("Failed to delete record.", "danger")
     return redirect(url_for('history'))
+
+# Retirement & What-If Scenario Simulator Routes
+@app.route('/retirement')
+def retirement():
+    """Retirement readiness calculator and What-If scenario simulator view."""
+    initial_data = {
+        'current_age': request.args.get('age', 30, type=int),
+        'retirement_age': request.args.get('retire_age', 60, type=int),
+        'current_savings': request.args.get('savings', 500000, type=float),
+        'monthly_expenses': request.args.get('expenses', 40000, type=float),
+        'monthly_savings': request.args.get('monthly_savings', 15000, type=float),
+        'expected_retirement_income': request.args.get('income', 0, type=float),
+        'annual_insurance_budget': request.args.get('insurance', 25000, type=float)
+    }
+    
+    saved_plans = []
+    user_id = session.get('user_id')
+    if user_id:
+        saved_plans = RetirementPlan.query.filter_by(user_id=user_id).order_by(RetirementPlan.created_at.desc()).all()
+
+    return render_template('retirement.html', initial_data=initial_data, saved_plans=saved_plans)
+
+@app.route('/api/retirement/calculate', methods=['POST'])
+def api_retirement_calculate():
+    """Calculates retirement gap analysis for provided inputs."""
+    data = request.get_json() or {}
+    result = calculate_retirement_gap(data)
+    
+    if result.get('success') and data.get('save_to_profile') and session.get('user_id'):
+        try:
+            import json as json_lib
+            plan = RetirementPlan(
+                user_id=session.get('user_id'),
+                current_age=result['current_age'],
+                retirement_age=result['retirement_age'],
+                life_expectancy=result['life_expectancy'],
+                current_savings=result['current_savings'],
+                monthly_expenses=result['monthly_expenses'],
+                monthly_savings=result['monthly_savings'],
+                expected_retirement_income=result['expected_retirement_income'],
+                annual_insurance_budget=result['annual_insurance_budget'],
+                projected_monthly_expense=result['projected_monthly_expense'],
+                required_corpus=result['required_corpus'],
+                available_corpus=result['total_available_corpus'],
+                financial_gap=result['financial_gap'],
+                readiness_percentage=result['readiness_percentage'],
+                additional_monthly_savings=result['additional_monthly_savings'],
+                status=result['status'],
+                assumptions_raw=json_lib.dumps(result['assumptions']),
+                recommendations_raw=json_lib.dumps(result['recommendations'])
+            )
+            db.session.add(plan)
+            db.session.commit()
+            result['saved_id'] = plan.id
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error saving retirement plan: {str(e)}")
+            
+    return jsonify(result)
+
+@app.route('/api/retirement/simulate', methods=['POST'])
+def api_retirement_simulate():
+    """Simulates What-If scenario against a baseline profile."""
+    data = request.get_json() or {}
+    baseline = data.get('baseline', {})
+    scenario = data.get('scenario', {})
+    result = simulate_what_if(baseline, scenario)
+    return jsonify(result)
+
+@app.route('/api/retirement/delete/<int:plan_id>', methods=['POST'])
+def delete_retirement_plan(plan_id):
+    """Deletes a saved retirement plan."""
+    user_id = session.get('user_id')
+    plan = RetirementPlan.query.get_or_404(plan_id)
+    if plan.user_id and plan.user_id != user_id:
+        return jsonify({'error': 'Unauthorized'}), 403
+    try:
+        db.session.delete(plan)
+        db.session.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/health')
 def health_check():

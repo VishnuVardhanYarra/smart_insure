@@ -212,7 +212,10 @@
 
     <!-- Actions -->
     <div style="display: flex; gap: 1rem; margin-top: 2rem; justify-content: center; flex-wrap: wrap;">
-        <a href="{{ url_for('assess') }}" class="btn btn-primary">
+        <a href="{{ url_for('retirement', age=rec.age, income=rec.annual_income) }}" class="btn btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <i class="fa-solid fa-calculator"></i> Retirement & What-If Simulator
+        </a>
+        <a href="{{ url_for('assess') }}" class="btn btn-secondary">
             <i class="fa-solid fa-plus"></i> New Assessment
         </a>
         <button onclick="window.print()" class="btn btn-secondary">

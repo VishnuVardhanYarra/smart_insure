@@ -13,8 +13,11 @@
             <a href="{{ url_for('assess') }}" class="btn btn-primary">
                 <i class="fa-solid fa-bolt"></i> Start Free Risk Analysis
             </a>
+            <a href="{{ url_for('retirement') }}" class="btn btn-secondary" style="border-color: rgba(16, 185, 129, 0.4); color: #a7f3d0;">
+                <i class="fa-solid fa-calculator"></i> Retirement & What-If Simulator
+            </a>
             <a href="{{ url_for('history') }}" class="btn btn-secondary">
-                <i class="fa-solid fa-clock-rotate-left"></i> View History Hub
+                <i class="fa-solid fa-clock-rotate-left"></i> History Hub
             </a>
         </div>
     </div>
@@ -78,6 +81,14 @@
         </div>
         <h3>Premium Estimation</h3>
         <p>Get instant estimations for monthly premium costs across life, health, and critical illness plans, tailored to your budget constraints.</p>
+    </div>
+    
+    <div class="feature-card">
+        <div class="feature-icon" style="background: rgba(16, 185, 129, 0.2); color: #10b981;">
+            <i class="fa-solid fa-calculator"></i>
+        </div>
+        <h3>Retirement Gap & What-If</h3>
+        <p>Project inflated retirement expenses, calculate required nest eggs, identify financial shortfalls, and simulate interactive "What-If" scenarios in real time.</p>
     </div>
 </section>
 {% endblock %}

@@ -14,6 +14,7 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     recommendations = db.relationship('UserRecommendation', backref='user', lazy=True)
+    retirement_plans = db.relationship('RetirementPlan', backref='user', lazy=True)
 
 class UserRecommendation(db.Model):
     __tablename__ = 'user_recommendation'
@@ -102,4 +103,82 @@ class UserRecommendation(db.Model):
             'financial_insights': self.financial_insights,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
         }
+
+class RetirementPlan(db.Model):
+    __tablename__ = 'retirement_plans'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    
+    # User Inputs
+    current_age = db.Column(db.Integer, nullable=False)
+    retirement_age = db.Column(db.Integer, nullable=False)
+    life_expectancy = db.Column(db.Integer, default=85)
+    current_savings = db.Column(db.Float, nullable=False)
+    monthly_expenses = db.Column(db.Float, nullable=False)
+    monthly_savings = db.Column(db.Float, nullable=False)
+    expected_retirement_income = db.Column(db.Float, default=0.0)
+    annual_insurance_budget = db.Column(db.Float, default=0.0)
+    
+    # Financial Projections
+    projected_monthly_expense = db.Column(db.Float, nullable=True)
+    required_corpus = db.Column(db.Float, nullable=True)
+    available_corpus = db.Column(db.Float, nullable=True)
+    financial_gap = db.Column(db.Float, nullable=True)
+    readiness_percentage = db.Column(db.Float, nullable=True)
+    additional_monthly_savings = db.Column(db.Float, default=0.0)
+    status = db.Column(db.String(50), default='pending')
+    
+    # Metadata and Assumptions stored as JSON
+    assumptions_raw = db.Column(db.Text, nullable=True)
+    recommendations_raw = db.Column(db.Text, nullable=True)
+    
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+    @property
+    def assumptions(self):
+        try:
+            return json.loads(self.assumptions_raw) if self.assumptions_raw else {}
+        except Exception:
+            return {}
+
+    @assumptions.setter
+    def assumptions(self, value):
+        self.assumptions_raw = json.dumps(value) if value else '{}'
+
+    @property
+    def recommendations(self):
+        try:
+            return json.loads(self.recommendations_raw) if self.recommendations_raw else []
+        except Exception:
+            return []
+
+    @recommendations.setter
+    def recommendations(self, value):
+        self.recommendations_raw = json.dumps(value) if value else '[]'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'current_age': self.current_age,
+            'retirement_age': self.retirement_age,
+            'life_expectancy': self.life_expectancy,
+            'current_savings': self.current_savings,
+            'monthly_expenses': self.monthly_expenses,
+            'monthly_savings': self.monthly_savings,
+            'expected_retirement_income': self.expected_retirement_income,
+            'annual_insurance_budget': self.annual_insurance_budget,
+            'projected_monthly_expense': self.projected_monthly_expense,
+            'required_corpus': self.required_corpus,
+            'available_corpus': self.available_corpus,
+            'financial_gap': self.financial_gap,
+            'readiness_percentage': self.readiness_percentage,
+            'additional_monthly_savings': self.additional_monthly_savings,
+            'status': self.status,
+            'assumptions': self.assumptions,
+            'recommendations': self.recommendations,
+            'created_at': self.created_at.strftime('%Y-%m-%d %H:%M:%S') if self.created_at else None
+        }
+
 
