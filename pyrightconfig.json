@@ -1,8 +1,6 @@
 {
-  "venvPath": "c:\\Users\\krishna kaushik\\.gemini\\antigravity\\scratch\\smart_insure",
   "venv": "venv",
   "extraPaths": [
-    "c:\\Users\\krishna kaushik\\.gemini\\antigravity\\scratch\\smart_insure\\venv\\Lib\\site-packages",
     "venv/Lib/site-packages",
     "./venv/Lib/site-packages"
   ]
